@@ -94,5 +94,124 @@ SE_net_conversion
 
 The first step in validation of the experiment is assessment of invariant metrics. There are some metrics that are expected to have more or less identical values in the both experiment and control groups.
 
-From the metrics that we have, I have chosen the number of cookies, number of clicks, and click-through probability as invariant metrics. Now using this data [I'm an inline-style link](https://www.google.com)
-, I check whether the values of these metrics are significantly different in the experiment and control groups.
+From the metrics that we have, I have chosen the number of cookies, number of clicks, and click-through probability as invariant metrics. Now using  [this data](https://www.google.com), I check whether the values of these metrics are significantly different in the experiment and control groups.
+
+
+```python
+control <- read.csv("/Users/yuxishen/Downloads/Final\ Project\ Results\ -\ Control.csv")
+
+experiment <- read.csv("/Users/yuxishen/Downloads/Final\ Project\ Results\ -\ Experiment.csv")
+
+```
+
+For the counts metrics, we assumed that 50% of the experiment traffic goes to the experiment group and 50% goes to the control group. If we call these two groups success and failure, then the model can be a Bernoulli distribution. So I would check whether the current counts of these two groups can come from a population with 0.5 change of success or failure. And I do it using bootstrapping to estimate and build confidence interval.
+
+**Null Hypothesis:** Status quo. Any difference between the metric value of the two groups is due to chance. 
+**Alternate Hypothesis:** The difference between the metric value of the two groups is meaningful, and significant. It cannot be due to random change.
+
+It is said in the course that we should calculate the fraction of the control group on the total. It can be the difference of the numbers of the two groups, or relative size of each group to another one. There are different ways anyway.
+
+**The calculation:**
+
+```python
+alpha <- 0.05
+
+experiment_pageviews <- experiment$Pageviews
+total_exp_pview <- sum(experiment_pageviews)
+total_exp_pview
+```
+```
+## [1] 344660
+```
+
+```python
+control_pageviews <- control$Pageviews
+total_cntl_pview <- sum(control_pageviews)
+total_cntl_pview
+```
+
+```
+## [1] 345543
+```
+
+```python
+observed_ratio<- total_cntl_pview/
+        (total_exp_pview+total_cntl_pview)
+observed_ratio
+```
+
+```
+## [1] 0.5006397
+```
+
+
+
+```python
+
+pool <- c(rep(x= 1,total_cntl_pview),rep(0,total_exp_pview))
+ratio_vector <- vector(length=10000)
+
+#sum(pool)/length(pool)
+
+# Calculation Using for-loop
+#----------------------------
+# for (i in 1:10000){
+#         pool_resample <- sample(pool,
+#                                 size = length(pool),
+#                                 replace = TRUE)
+#         
+#         ratio_vector[i] <- sum(pool_resample)/length(pool)
+# }
+# 
+# hist(ratio_vector)
+# abline(v = observed_ratio)
+# --------------------------
+# Calculation Using lapply()
+#----------------------------
+# t<- lapply(1:10000 , function(i){
+#         pool_resample <- sample(pool,
+#                                 size = length(pool),
+#                                 replace = TRUE)
+#         
+#         ratio_vector[i] <- sum(pool_resample)/length(pool)
+#         #ratio_vector[i]
+# })
+# 
+# t <- unlist(t)
+# hist(t)
+# -----------------------------
+#Calculation using parallel computing 
+#----------------------------
+
+# Calculate the number of cores
+no_cores <- detectCores() - 1
+
+# Initiate cluster
+cl <- makeCluster(no_cores)
+
+
+
+t_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+        pool_resample <- sample(pool,
+                                size = length(pool),
+                                replace = TRUE)
+        
+        ratio_vector[i] <- sum(pool_resample)/length(pool)
+        #ratio_vector[i]
+} )
+
+t_parallel <- unlist(t_parallel)
+t_parallel <- sort(t_parallel,decreasing = FALSE)
+lower_bound <- t_parallel[10000*alpha/2]
+upper_bound <- t_parallel[10000 - (10000*alpha/2)]
+
+hist(t_parallel, main = "Proportion of #cookies" )
+abline(v =0.5 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+![Alt text](/Users/syx/Desktop/pic_1.png "Optional title")
+
+
+
+
