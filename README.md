@@ -210,8 +210,285 @@ abline(v =0.5 , col = "blue" )
 abline(v = lower_bound, col = "red")
 abline(v = upper_bound, col = "red")
 ```
-![Alt text](/Users/syx/Desktop/pic_1.png "Optional title")
+![img1](imgfold/img1.png)
 
 
 
+Again it is clear that the number of clicks is randomly assigned into the experiment and control groups.
+
+The last sanity check would be evaluation of the click-through-probability. Bootstrapping would help in this case too. What we want to measure is the significance of the difference between the click-through probability of the experiment and control groups.
+
+One approach is calculation of the difference vector, then building confidence interval around its average using resampling method.
+
+
+```python
+experiment_ctp <- experiment$Clicks / experiment$Pageviews
+control_ctp <- control$Clicks / control$Pageviews
+
+diff_ctp <- round(experiment_ctp,4) - round(control_ctp,4)
+obs_diff_avg <- mean(diff_ctp)
+obs_diff_avg
+```
+
+```
+## [1] 6.486486e-05
+```
+
+Now the bootstrapping.
+
+```python
+diff_avg_vector <- vector(length=10000)
+
+
+ctp_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+        pool_resample <- sample(diff_ctp,
+                                size = length(diff_ctp),
+                                replace = TRUE)
+        
+        diff_avg_vector[i] <- mean(pool_resample)
+ 
+} )
+
+ctp_parallel <- unlist(ctp_parallel)
+ctp_parallel <- sort(ctp_parallel,decreasing = FALSE)
+lower_bound <- ctp_parallel[10000*alpha/2]
+upper_bound <- ctp_parallel[10000 - (10000*alpha/2)]
+
+hist(ctp_parallel, xlab = "CTP diff between two groups")
+abline(v =0 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+
+![img3](imgfold/img3.png)
+
+
+As it can be seen, 0 is in the CI so the difference between the two groups is insignificant.
+
+# 9. Effect Size Tests
+
+As all sanity checks were passed, and the experiment data is validated to some extent, we can go forward and analyze the evaluation metrics.
+
+What we want to do is assessing whether the differences between evaluation metric values of the control and experiment groups are significant or not. Previously, we had chosen gross conversion and net conversion as the two evaluation metrics. We expect the gross conversion to be lower in the experiment group since the number of enrollments should be lowered, and in contrast we expect not to see any significant difference between the values of net conversion rate of the experiment and control groups.
+
+
+```python
+experiment_net_c <- experiment$Payments/experiment$Clicks
+experiment_net_c <- experiment_net_c[!is.na(experiment_net_c)]
+
+control_net_c <- control$Payments/control$Clicks
+control_net_c <- control_net_c[!is.na(control_net_c)]
+
+diff_net_c <- experiment_net_c - control_net_c
+avg_net_c <- mean(diff_net_c)
+avg_net_c
+```
+
+```
+## [1] -0.004896857
+```
+
+It is interesting that the net conversion value is negative, so the net conversion rate in the experiment group is lower than the control group.
+
+Now we can use bootstrapping to check whether the observed value is exceptional under given alpha and assumed null hypothesis.
+
+```python
+net_c_avg_vector <- vector(length=10000)
+
+pool <- c(experiment_net_c, control_net_c)
+
+net_c_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+
+        # exp_resample <- sample(pool,
+        #                         size = length(experiment_net_c),
+        #                         replace = TRUE)
+        # cntl_resample <- sample(pool,
+        #                         size = length(experiment_net_c),
+        #                         replace = TRUE)
+        # net_c_avg_vector[i] <- mean(exp_resample - cntl_resample)
+        
+        
+        resample <- sample(diff_net_c,
+                           size = length(diff_net_c),
+                           replace = TRUE)
+        net_c_avg_vector[i] <- mean(resample)
+        
+        
+        
+ 
+} )
+
+net_c_parallel <- unlist(net_c_parallel)
+net_c_parallel <- sort(net_c_parallel,decreasing = FALSE)
+lower_bound <- net_c_parallel[10000*alpha/2]
+upper_bound <- net_c_parallel[10000 - (10000*alpha/2)]
+
+hist(net_c_parallel, xlab = "Net C diff between two groups")
+abline(v =0 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+
+![img4](imgfold/img4.png)
+
+
+As it can be seen, the difference between net conversion rate of the two expriment and control groups is insignificant. This is exactly what we expected.
+
+The second metric is the gross conversion rate. The analysis would be exactly the same as above, but we expect a significant result for this metric. More specifically, it is expected that this metric is significantly lower in the experiment group comparing to the control group.
+
+
+```python
+experiment_gross_c <- experiment$Enrollments/experiment$Clicks
+experiment_gross_c <- experiment_gross_c[!is.na(experiment_gross_c)]
+
+control_gross_c <- control$Enrollments/control$Clicks
+control_gross_c <- control_gross_c[!is.na(control_gross_c)]
+
+diff_gross_c <- experiment_gross_c - control_gross_c
+avg_gross_c <- mean(diff_gross_c)
+avg_gross_c
+```
+
+```
+## [1] -0.02078458
+```
+
+
+The observed difference is negative, showing that the metric in the experiment group is lower than the metric in the control group.
+
+Now bootstrapping based on the null hypothesis.
+
+```python
+gross_c_avg_vector <- vector(length = 10000)
+
+gross_c_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+
+        resample <- sample(diff_gross_c,
+                                size = length(diff_gross_c),
+                                replace = TRUE)
+        
+        
+        gross_c_avg_vector[i] <- mean(resample)
+ 
+} )
+
+gross_c_parallel <- unlist(gross_c_parallel)
+gross_c_parallel <- sort(gross_c_parallel,decreasing = FALSE)
+lower_bound <- gross_c_parallel[10000*alpha/2]
+upper_bound <- gross_c_parallel[10000 - (10000*alpha/2)]
+
+hist(gross_c_parallel, xlab = "CI of the observerd Gross Conv Rates")
+abline(v =0 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+
+
+![img5](imgfold/img5.png)
+
+
+As it can be seen, the 0 is out of CI boundary, and it shows that the obsevered result is statistically significant. Also since the result is on the left hand side of the 0, our expectation is met and the gross conversion rate of the experiment group is lower than the control group.
+
+# Sign Test
+
+
+Sign test is basically checking whether the signs, either positive or negative, of the differences of the metrics between two groups are meaningfully distributed over the days of the experiment or not.
+For instance, if in every single day of the experiment the gross conversion rate is lower in the experiment group comparing to the control group, then being so assures us further that this metric is significantly reduced due to the experiment.
+
+In order to check the significance of the signs, it is possible to use bootstrapping as well. The null hypothesis is the proportion of negative signs to the number of experiment days is a random and insignificant value. Thus, this is a one sample proportion test.
+
+For the net conversion rate sign test, I consider being negative as the baseline, and I check whether the observed number of negative values is statsitically significant or not.
+
+
+```python
+net_c_sign <- diff_net_c < 0 
+
+#the observed proportion of negative signs
+net_c_prop<- sum(net_c_sign)/length(net_c_sign)
+net_c_prop
+```
+
+```
+## [1] 0.5652174
+```
+
+```python
+net_c_sign_vector <- vector(length = 10000)
+net_c_sign_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+
+        resample <- sample(net_c_sign,
+                                size = length(net_c_sign),
+                                replace = TRUE)
+        
+        
+        net_c_sign_vector[i] <- sum(resample)/length(resample)
+ 
+} )
+
+net_c_sign_parallel <- unlist(net_c_sign_parallel)
+net_c_sign_parallel <- sort(net_c_sign_parallel,decreasing = FALSE)
+lower_bound <- net_c_sign_parallel[10000*alpha/2]
+upper_bound <- net_c_sign_parallel[10000 - (10000*alpha/2)]
+
+hist(x = net_c_sign_parallel, xlab = "Net conversion sign CI")
+abline(v =0.5 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+
+![img6](imgfold/img6.png)
+
+So the above graph shows that the observed sign data for the net conversion is totally regular, and there is nothing exeptional based on the significance level of alpha. The CI of the observed data includes 0.5 proportion, so there is no reason not to believe that this data comes from a population with proportion value = 0.5.
+
+We do the same for the gross conversion rate.
+
+```python
+gross_c_sign <- diff_gross_c < 0 
+
+#the observed number of negative signs
+gross_c_prop <- sum(gross_c_sign)/length(gross_c_sign)
+gross_c_prop
+```
+
+```
+## [1] 0.826087
+```
+
+
+
+```python
+gross_c_sign_vector <- vector(length = 10000)
+gross_c_sign_parallel<- mclapply(X = 1:10000 , FUN = function(i){
+
+        resample <- sample(gross_c_sign,
+                                size = length(gross_c_sign),
+                                replace = TRUE)
+        
+        
+        gross_c_sign_vector[i] <- sum(resample)/length(resample)
+ 
+} )
+
+gross_c_sign_parallel <- unlist(gross_c_sign_parallel)
+gross_c_sign_parallel <- sort(gross_c_sign_parallel,
+                              decreasing = FALSE)
+lower_bound <- gross_c_sign_parallel[10000*alpha/2]
+upper_bound <- gross_c_sign_parallel[10000 - (10000*alpha/2)]
+
+hist(gross_c_sign_parallel, xlab = "Gross conversion sign CI")
+abline(v =0.5 , col = "blue" )
+abline(v = lower_bound, col = "red")
+abline(v = upper_bound, col = "red")
+```
+
+![img7](imgfold/img7.png)
+
+The gross conversion rate has a different story from the net conversion rate. The above graph shows that the signs of the gross conversion metric are not comming from a population with proportion = 0.5, so we reject this null hypothesis in favor of the alternate hypothesis.
+
+The proportion of the negative signs in the gross conversion data is significantly higher than 0.5, and this assures us further that the gross conversion rate of the experiment group is significantly lower than the control group.
+
+# 10. Recommendation
+
+
+This experiment aimed to assess whether filtering students based on their study time commitment would enhance the overall student experience and coaches' ability to support those likely to complete the course, without significantly impacting the number of students who continue beyond the free trial. The results showed a statistically and practically significant decrease in Gross Conversion, but no notable differences in Net Conversion. This means there was a decrease in enrollment without a corresponding increase in students staying for the required 14 days to trigger payment. Based on these findings, it is recommended not to proceed with the launch and instead explore other experimental approaches.
 
