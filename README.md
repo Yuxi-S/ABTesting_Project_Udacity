@@ -10,7 +10,9 @@ The initial unit of diversion to the conrol and experiment groups is a unique co
 
 # Metric Choice
 
-## Invariant Metrics: number of cookies, number of clicks, click-through-probability
+## Invariant Metrics:
+number of cookies, number of clicks, click-through-probability
 
-## Evaluation Metrics: gross conversion, retention, net conversion
+## Evaluation Metrics: 
+gross conversion, retention, net conversion
 
